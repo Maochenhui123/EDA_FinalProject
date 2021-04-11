@@ -1,1 +1,14 @@
 # Data transformation
+
+We directly download the free dataset from [Open Food Facts - Word](https://world.openfoodfacts.org/) website and import it into rstudio.
+```{r echo=FALSE,warning=FALSE}
+# Read the tsv file
+df <- data.table::fread(input="data/en.openfoodfacts.org.products.tsv",colClasses = c('code'='character'))
+dim(df)
+```
+
+```{r setup, include=FALSE}
+# this prevents package loading message from appearing in the rendered version of your problem set
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE)
+```

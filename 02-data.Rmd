@@ -1,2 +1,66 @@
 # Data sources
 
+## Background
+After several times of brainstorming, our group found all three of us interested in food security and healthy diet. Ellen found a website called [Open Food Facts - Word](https://world.openfoodfacts.org/), which provides free open database of food products with ingredients, allergens, nutrition facts and all the tidbits of information we can find on product labels. With rich content we can obtain, we reached a consensus of working on the final project related to FOODS. 
+
+One thing to be noted about the website is that: all data are contributed by the public:
+
+*"Open Food Facts is a food products database made by everyone, for everyone. You can use it to make better food choices, and as it is open data, anyone can re-use it for any purpose." (Quoted)*
+
+
+## About the Dataset
+The original thought was to scrape all items on this website until we found the dataset is available on this link <https://world.openfoodfacts.org/data>. 
+
+The *dataset* contains 163 variables(features) and 356,001 records, Basically we can divide those variables into the following fields:
+
+#### General information
+Including information that uniquely identify the products. Those information include product code, url, etc. 
+
+||||||
+|----|----|----|----|----|
+|code|url|creator|creator_t|creator_datetime|
+|last_modified_t|last_modified_datetime|product_name|generic_name|quantity|
+
+#### Tags
+This part contains tags information that tell us about things, for example, where the product is from? What is its brands? Where it is sold to?
+
+||||||
+|----|----|----|----|----|----|
+|packaging|packaging_tags|brands|brands_tags|categories|categories_tags|
+|categories_fr|origins|origins_tags|manufacturing_places|manufacturing_places_tags|labels|
+|labels_tags|labels_fr|emb_codes|emb_codes_tags|first_packaging_code_geo|cities|
+|cities_tags|purchase_places|stores|countries|countries_tags|countries_fr|
+
+#### Ingredients
+As the name suggests, it contains ingredients of the product.
+
+||||
+|----|----|----|
+|ingredients_text|traces|traces_tags|
+
+#### nutrition facts
+Also as the name suggests, it contains the nutrition facts that is visible almost in any food products. One thing need to be noted in this part, all variables in this part are with a suffix of `"_100g"` which means the amount of nutriment for 100g or 100ml of product.
+
+Because there are too many variables in this part, so, I just list few of which.
+
+||||||
+|----|----|----|----|----|
+|energy_100g|energy-kj_100g|energy-kcal_100g|proteins_100g|...|
+
+#### Others
+
+There is no general fields for variables in this part.
+
+|||||
+|----|----|----|----|
+|serving_size|no_nutriments|additives_n|additives|
+|additives_tags|ingredients_from_palm_oil_n|ingredients_from_palm_oil|ingredients_from_palm_oil_tags|
+|ingredients_that_may_be_from_palm_oil_n|ingredients_that_may_be_from_palm_oil|ingredients_that_may_be_from_palm_oil_tags|nutrition_grade_fr|
+|main_category|main_category_fr|image_url|image_small_url|
+
+
+## Observation
+Due to the large amount of variables that can be observed from this dataset, we hope by some means we can eliminate part of the variables. Luckily, one observation that can be generated from this dataset is that we found that there are a lot of duplicate variables that end with a certain suffix like `brands` and `brands-tag`. They basically describe the same information but with different recording methods. For example in `brands` an item is *"Bob's Red Mill"*, while in `brands-tag` that item becomes *"bob-s-red-mill"*. That situation happens to most of the variables with suffix like `_tag`, `_fr`, `_t`, `_date`,... Some may even use different measurements like `energy_100g`, `energy-kj_100g` and `energy-kcal_100g`. If we just ignore it, that will undoubtedly add to our burden when processing the data.
+
+Therefore, when we choose variables, we avoid choosing ones with those suffixes.
+

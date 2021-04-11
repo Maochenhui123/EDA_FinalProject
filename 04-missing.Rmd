@@ -1,1 +1,89 @@
 # Missing values
+
+
+```{r echo=FALSE,warning=FALSE}
+#install package
+if(!require("tidyverse")) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require("dplyr")) install.packages("dplyr", repos = "http://cran.us.r-project.org")
+if(!require("tm")) install.packages("tm", repos = "http://cran.us.r-project.org")
+if(!require("SnowballC")) install.packages("SnowballC", repos = "http://cran.us.r-project.org")
+if(!require("wordcloud")) install.packages("wordcloud", repos = "http://cran.us.r-project.org")
+if(!require("RColorBrewer")) install.packages("RColorBrewer", repos = "http://cran.us.r-project.org")
+if(!require("wordcloud2")) install.packages("wordcloud2", repos = "http://cran.us.r-project.org")
+if(!require("htmlwidgets")) install.packages("htmlwidgets", repos = "http://cran.us.r-project.org")
+if(!require("webshot")) install.packages("webshot", repos = "http://cran.us.r-project.org")
+```
+
+```{r echo=FALSE,warning=FALSE}
+#load package
+library(tidyverse)
+library(dplyr)
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+library("wordcloud2")
+```
+
+First we get the percentages of missing values per feature, and stored the percentages in variable called `missing_values`. We found the missing values are either in the form of 'na' or blank.
+
+```{r echo=FALSE,warning=FALSE}
+missing_values <- df %>%
+  gather(key = "key", value = "val") %>%
+  mutate(na = (is.na(val) | val=="")) %>%
+  group_by(key) %>%
+  mutate(n = n()) %>%
+  group_by(key, n, na) %>%
+  summarise(num.na = n()) %>%
+  mutate(pct = num.na / n * 100)
+```
+
+## Graph I.
+The first graph shows the percentage of missing values per feature: 
+```{r fig.width=16,fig.height=8}
+levels <- (missing_values  %>% filter(na == TRUE) %>% arrange(desc(pct)))$key
+
+percentage_plot <- missing_values %>% ggplot() +
+  geom_bar(aes(x = reorder(key, desc(pct)), y = pct, fill=na), stat = 'identity', alpha=0.8) +
+      scale_x_discrete(limits = levels) +
+      scale_fill_manual(name = "", values = c('tomato3', 'steelblue'), labels = c("Missing", "Present")) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),title = element_text(size = 30)) +
+      labs(title = "Plot 1: Percentage of missing values", x = "", y = "% of missing values")
+
+percentage_plot
+
+```
+We use percentage plot later as a reference to drop features with too many missing values. 
+
+## Graph II.
+The second graph shows the missing values by variable: 
+```{r fig.width=8,fig.height=16}
+# One other way of visulizing the missing values is by plotting each row of the dataset to get further insights. This plot lets you find patterns which cannot be found with our bar chart. You can see links between missing values for different features.
+
+# If we don't sample rows from our original dataset, due to too many rows, we have 356001 of observations, the row plot exceed the memory size. So we choose to randomly sample 5000 rows from original dataset and get the plot.
+sample_na <- sample_n(df, 5000)
+row.plot <- sample_na %>%
+  mutate(id = row_number()) %>%
+  gather(-id, key = "key", value = "val") %>%
+  mutate(na = is.na(val)) %>%
+  ggplot(aes(key, id, fill = na)) +
+    geom_tile(alpha=0.8) +
+    scale_fill_manual(name = "",
+        values = c('steelblue', 'tomato3'),
+        labels = c("Present", "Missing")) +
+    scale_x_discrete(limits = levels) +
+    labs(x = "", y = "Row Number", title = "Missing values in rows") +
+    coord_flip()
+
+row.plot
+```
+This one is easier to tell row/column missing patterns by observing links between missing values for different features.
+
+## Feature Engineering 
+We drop all the features which have more than 75% missing values to avoid ending up with misleading results. 77 columns are dropped. We go from 163 columns to 86 columns. 
+```{r feature engineering}
+df2 <- df[, which(colMeans(!is.na(df)) > 0.75)]
+# dim(df2)
+
+# write.csv(df2, 'foodfact.csv')
+```

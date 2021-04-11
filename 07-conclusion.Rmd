@@ -1,2 +1,12 @@
 # Conclusion
 
+## Limitations
+In this project, based on the data we had, we mainly focused on 12 countries with the most number of observations as our target. By analyzing the data, we learned how vitamins on food market vary by country and which country has highest average sugar amount. And we made two word clouds for keto-friendly foods on US and France food market. The number of countries we pick is large enough for this project. While to find answers for the global food market, we may need to involve more countries. 
+
+## Future Directions
+In the future, we can relate what we found in this project to other scientific reports towards healthy issues with food. The second part of our project which relates the average sugar amount over countries to the diabetes prevalence is such an example. To extend the third part of our project, we could find more data and scientific findings of how keto-friendly food improve people health (or not). We can look into vitamins deficiency among people and which food rich in vitamins that are recommended for people to consume.
+
+## Lessons Learned
+### Exploratory Data Analysis 
+The way we inspect missing values by plotting two graphs, one for percentage of missing values and one for row/column missing patterns, is a good first step of EDA. From that point, we get familiared with the pattern of missing values in the dataset and drop features which contain too many missing values to guarantee the accuracy and unbiasedness of our future findings.
+

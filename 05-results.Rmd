@@ -1,1 +1,406 @@
 # Results
+
+## How Vitamins on Food Markets Vary by Country? 
+
+Select top 12 countries with the most varieties of food in the dataset:
+
+```{r}
+countries <- df %>%
+  filter(!is.na(countries_en),countries_en!="")%>%
+  group_by(countries_en) %>% 
+  count(sort=TRUE)%>%
+  head(14)%>%
+  filter(!str_detect(countries_en,pattern = ","))
+
+countries
+```
+  
+Collecting foods with the nutrition score and energy that were sold in those 12 countries:
+
+```{r}
+nutrition <- df %>%
+  select("energy_100g","nutrition-score-uk_100g","countries_en","brands")
+nutrition <- nutrition %>%
+  filter_all(all_vars(!is.na(.)))%>%
+  filter_all(all_vars(.!=""))%>%
+  inner_join(countries, by = c("countries_en"))%>%
+  mutate(energy_100g = as.numeric(.$energy_100g))%>%
+  select(countries_en, energy_100g)
+
+head(nutrition)
+```
+
+
+### Energy in food among different countries
+
+This graph presents the distribution of energy per 100g in foods that were sold in those 12 countries. And our team observe one fascinating fact from it. While other countries present a trend of multimodality, the trend is more obvious in countries like United Kingdom and Spain. Russia, on the contrary, sell food with an unimodal pattern, moreover, Russia is more likely to sell food with high energy per 100g. I believe that is due to the climate reason. As the websites (*https://www.weatheronline.co.uk/reports/climate/Russia.htm*) has suggested<br>
+
+"In general, the climate of Russia can be described as highly continental influenced climate with warm to hot dry summers and (very) cold winters with temperatures of -30°C and lower and sometimes heavy snowfall. sometimes very strong easterly winds, called Buran can occur, bringing freezing cold temperatures and snowstorms."<br>
+
+That extreme weather fluctuations requiring Russians to consume more energy to make up for the loss of body function.
+
+While for other countries where the climate fluctuations is not that dramatic, the distribution of energy per 100g in food tend to be multimodal. Moreover, the highest peak is more likely to appear in a low energy area.
+
+```{r fig.width=16,fig.height=8}
+nutrition %>%
+  ggplot(aes(energy_100g))+
+  geom_histogram(stat = "density")+
+  xlim(0,5000)+
+  facet_wrap(~countries_en)+
+  ggtitle("Distribution of energy per 100g",subtitle = "Among 12 countries")+
+  theme(plot.title = element_text(size=30),
+        text = element_text(size=20))
+```
+
+### Vitamins among Different countries
+select all vitamins family, energy, countries, nutrition score from the dataset. Australia will be eliminated because the whole vitamin-d and vitamin-e part are missing:
+
+```{r}
+vitamins <- df%>%
+  select("vitamin-a_100g","vitamin-b1_100g",
+         "vitamin-b2_100g","vitamin-c_100g",
+         "vitamin-d_100g","vitamin-e_100g",
+         "countries_en")
+
+vitamins <- vitamins %>%
+  rename(vitamin.a = "vitamin-a_100g", vitamin.d = "vitamin-d_100g",
+         vitamin.e = "vitamin-e_100g", vitamin.c = "vitamin-c_100g",
+         vitamin.b1 = "vitamin-b1_100g", vitamin.b2 = "vitamin-b2_100g")%>%
+  gather(key = "vitamins",value = "val",-countries_en)%>%
+  filter(!is.na(val))
+
+vitamins_countries <- vitamins%>%
+  inner_join(countries,by = c("countries_en"))%>%
+  group_by(countries_en,vitamins)%>%
+  summarise(mean = mean(val))
+
+vitamins_countries <- 
+  vitamins_countries%>%
+  spread(vitamins, mean)%>%
+  drop_na()%>%
+  gather(key = "vitamins",value = "val",-countries_en)
+
+vitamins_countries
+```
+
+
+
+```{r fig.width=10,fig.height=10}
+# Heatmap
+vitamins_countries%>%
+  ggplot(aes(x=vitamins, y = countries_en, fill=val))+
+  geom_tile()+
+  ggtitle("Heatmap on dosage of vitamin")+
+  theme(plot.title = element_text(size=30, hjust = 0.5),
+        text = element_text(size=20))+
+  ylab("Countries")+
+  scale_fill_gradient(low="light yellow", high="red")
+```
+
+This graph describe the difference of vitamins' dosage among different countries. As can be seen in this graph that most countries use the most dosage of vitamin C among all vitamin family indicating vitamin C is the most important and easily obtained vitamin among all vitamin family. As is known to all foods like oranges, strawberries, peppers, broccoli, potatoes are rich in vitamin C, and they are all daily necessary food, no wonder it takes higher dosage than other vitamins.
+
+As can be compared, Germany use the highest dosage in vitamin C, suggesting that there might be rich sources of vitamin C in Germany.
+
+While most countries use the most dosage in vitamins C among vitamins family, the US use the most dosage in vitamin b1 and vitamin b2. It is said that there are high concentrations of Vitamin B1 in the outer layers and germ of cereals, as well as in yeast, beef, pork, nuts, whole grains, and pulses; foods like eggs, fortified cereals, bread, and grain products are high in vitamin B2, which are all popular among the US. That might account for the reason why vitamin b1 and b2 take a higher dosage in th US than other countries.
+
+
+
+```{r}
+proportion <- vitamins_countries%>%
+  group_by(countries_en)%>%
+  mutate(total = sum(val))%>%
+  mutate(proportion = val/total)%>%
+  select(countries_en,vitamins,proportion)
+vitamins_proportion<-proportion%>%
+  spread(vitamins,proportion)
+write.csv(vitamins_proportion,"vitamins_proportion.csv")
+vitamins_proportion
+```
+
+```{r fig.width=20,fig.height=10}
+proportion%>%
+  ggplot(aes(x = vitamins,y = proportion,fill=countries_en))+
+  geom_bar(stat = "identity",position = "dodge",color="black")+
+  scale_fill_brewer(palette = "RdYlBu")+
+  ggtitle("Proporation of Vitamins in different countries")+
+  theme(plot.title = element_text(size=40, hjust = 0.5),
+        text = element_text(size=35))
+```
+
+This is the proportion of vitamins family in each countries so that we can observe more clearly on the proportion of vitamins. Still we can draw a similar conclusion that Vitamin C take a higher proportion among all foods than other vitamins.
+
+Also we can discover some new facts from it: vitamin E is the second to the most popular vitamin after vitamin C. Vitamin E is found in planted-based oils, nuts, seeds, fruits and vegetables, which are all daily necessary food.
+
+Moreover, all countries in the list use minimum dosage of vitamin D. Most popular food with rich Vitamin D is oily fish, liver, egg yolks, which is not necessary for daily food consumption. That might account for the reason why there is minimum dosage of vitamin D.
+
+
+## Which country eat the most sugar?
+
+```{r}
+# Data Processing
+world_sugars = subset(df,!is.na(df$sugars_100g))
+```
+
+```{r}
+# United States
+US_sugars = world_sugars[world_sugars$countries_en=='United States', ]$sugars_100g
+# France
+france_sugars = world_sugars[world_sugars$countries_en=='France', ]$sugars_100g
+# Switzerland
+switzerland_sugar = world_sugars[world_sugars$countries_en=='Switzerland', ]$sugars_100g
+# Germany
+germany_sugar = world_sugars[world_sugars$countries_en=='Germany', ]$sugars_100g
+# Spain
+spain_sugar = world_sugars[world_sugars$countries_en=='Spain', ]$sugars_100g
+# United Kingdom
+UK_sugar = world_sugars[world_sugars$countries_en=='United Kingdom', ]$sugars_100g
+# Belgium
+belgium_sugar = world_sugars[world_sugars$countries_en=='Belgium', ]$sugars_100g
+# Australia
+australia_sugar = world_sugars[world_sugars$countries_en=='Australia', ]$sugars_100g
+# Russia
+russia_sugar = world_sugars[world_sugars$countries_en=='Russia', ]$sugars_100g
+# Italy
+italy_sugar = world_sugars[world_sugars$countries_en=='Italy', ]$sugars_100g
+# Canada
+canada_sugar = world_sugars[world_sugars$countries_en=='Canada', ]$sugars_100g
+# Portugal
+portugal_sugar = world_sugars[world_sugars$countries_en=='Portugal', ]$sugars_100g
+```
+
+```{r}
+countries = c('United States', 'France', 'Switzerland', 'Germany', 'Spain', 'United Kingdom', 'Belgium', 'Australia', 'Russia', 'Italy','Canada','Portugal')
+
+sugars_l = c(mean(US_sugars), 
+            mean(france_sugars), 
+            mean(switzerland_sugar), 
+            mean(germany_sugar), 
+            mean(spain_sugar), 
+            mean(UK_sugar),
+            mean(belgium_sugar),
+            mean(australia_sugar),
+            mean(russia_sugar),
+            mean(italy_sugar),
+            mean(canada_sugar),
+            mean(portugal_sugar))
+```
+
+```{r fig.width=16,fig.height=8}
+df_suagr = data.frame(countries,sugars_l)
+df_suagr$countries = factor(df_suagr$countries, levels = df_suagr$countries) #Comment it, if you want to alphbetically order x-axis
+
+ggplot(df_suagr,aes(x = reorder(countries, -sugars_l), y = sugars_l ))  +
+    geom_bar(fill="#4393C3",stat='identity') + 
+    scale_y_continuous(name="Sugar/100g", breaks=seq(0,18,2)) +
+    ggtitle("Average total sugar content per 100g") +
+    theme(plot.title = element_text(size=45, hjust = 0.5),
+        text = element_text(size=20))+
+    xlab("")
+```
+
+Russia ranks no.1 of average total sugar content and United States also have a high average sugar content. 
+
+## Which country has the highest diabetes prevalence?
+```{r}
+# Diabetes prevalence (% of population ages 20 to 79) - Country Ranking
+diabetes_pre <- c(
+                  10.8, #US
+                  4.8, #France
+                  5.7, #Switzerland
+                  10.4, #Germany
+                  6.9, #Spain
+                  3.9, #UK
+                  4.6, # Belgium
+                  5.6, #Australia
+                  6.1, #Russia
+                  5.0, #Italy
+                  7.6, #Canada
+                  9.8 #Portugal
+                  )
+# Data source: https://data.worldbank.org/indicator/SH.STA.DIAB.ZS
+```
+
+```{r }
+df_diabetes = data.frame(countries,diabetes_pre)
+df_diabetes$countries = factor(df_diabetes$countries, levels = df_diabetes$countries) #Comment it, if you want to alphbetically order x-axis
+
+ggplot(df_diabetes,aes(x = factor(countries), y = diabetes_pre, group=1))  +
+    geom_line() + 
+    geom_point() +
+    scale_y_continuous(name="Diabetes prevalence (% of population ages 20 to 79)", breaks=seq(0,12,0.4)) +
+    ggtitle("Country Ranking % of Diabetes") +
+    geom_text(aes(label = diabetes_pre),
+            vjust = "inward", hjust = "inward",
+            show.legend = FALSE) +
+   theme(plot.title = element_text(size=12, hjust = 0.5),
+        text = element_text(size=8)
+        )+
+    xlab("")
+```
+
+Among these 12 countries, in the above plot, US has highest diabetes prevalence with 10.8% of population aged 20-79 with diabetes. Three peaks in the above plot corresponds to US, Germany and Portugal.
+
+## What are the most frequent keywords in a Keto-friendly product in the US and France supermarkets?
+
+The Ketogenic Diet is one of the well-known diets gaining a lot of popularity in recent years all over the world. It pursues a low-carbohydrate, high-fat eating plan to treat particular medical conditions such as diabetes and is also known as an effective weight-loss dietary plan for most people in the way that it restricts hormone that induces weight gain. We would like to know what are the notable keywords in products classified as keto-friendly certified products and keywords in ordinary products and compare.
+
+We first want to classify which products are Keto-friendly products. The Keto Certified Standards by KETOCERTIFIED, a third-party Keto certification organization that issues certificates to food products in the market, are adopted for the classification standard. According to the standard, Keto-friendly products must not contain more than 10g net/effective carbohydrates per serving. Since we are interested in calculating net carbohydrates per serving, we first calculated it using carbohydrates_100g, fiber_100g, serving_size features. 
+
+Since product names are written in each countries different language settings, we divided the data with different countries to calculate net carb. Products with missing carb, fiber, serving size, and product name are neglected. Most serving sizes of products are in gram(g) and milliliter(ml) units, so other irregular units such as 1 biscuit or 1 cookie are neglected as well.
+
+(However, even though the dataset has its own 'category' features, most products are labeled in irregular setting or omitted, which make differentiating Keto standards for 'snacks', and 'condiments' less meaningful. So, in this analysis, specific standards for the two food categories are ignored. There are not enough product names are left after manipulating products in German supermarkets, so the German dataset is excluded in the WordClouds map.)
+
+In the US supermarket, we can easily recognize there are different trends in keywords between keto-friendly products and ordinary products. Most frequent keywords in Keto-friendly products in the United States are "cheese", "sauce", "organic" ,"roasted" ,"chicken" ,"cheddar" ,"mix" ,"dressing", "beef", and "natural". Most frequent keywords in ordinary products in the US are "chocolate", "cheese", "organic" ,"sauce", "mix", "cream", "milk", "chips", "cookies", and "chicken". It's expected that high sugar-like words such as "chocolate", "chip", and "cookies" are not to be included in the Keto-friendly WordClouds map; it is quite surprising, however, that products linked with high-sugar keywords take up many parts in the market. I didn't expect the keyword "chocolate" would account for the largest portion of the word count frequency.
+
+Though the WordClouds map in the French supermarkets is shown in the French language, we can recognize the most frequent word in the ordinary products are also "Chocolat". When I translated the most frequent 10 words in the French supermarkets to English, those are 
+"chocolate", "milk", "vegetables", "organic", "plain", "fruit", "chicken", "rice", "sauce", and "flavor". The words of ordinary products in the French supermarkets contain fresher, less refined, and less sugary words than those in the US supermarkets. 
+
+Ingesting a high level of sugar and refined carbohydrates could be harmful to maintaining the best health condition. By realizing there are lots of sugar products in the market and so it is very likely to ingest unwanted sugar even without noticing, it could help to preserve one's health by keeping one's eyes open.
+
+```{r}
+# generating new dataset for keto-friednly Word Clouds
+data_keto <- df %>% select(countries_en, product_name, categories, carbohydrates_100g, fiber_100g, proteins_100g, fat_100g, serving_size)
+data_keto <- data_keto[!is.na(data_keto$carbohydrates_100g),]
+data_keto <- data_keto[!is.na(data_keto$fiber_100g),]
+data_keto <- data_keto[!is.na(data_keto$serving_size),]
+data_keto <- data_keto[!is.na(data_keto$product_name),]
+us_keto <- data_keto[data_keto$countries_en %in% "United States",]
+```
+
+```{r}
+#only products using 'gram' units in their serving size.
+us_keto_g <- us_keto %>%
+  filter(str_detect(serving_size, "\\d\\sg")) %>%
+  mutate(serv_size = serving_size)%>%
+  mutate(serving_size = iconv(.$serving_size,"WINDOWS-1252","UTF-8"))%>%
+  separate(serving_size, into = c("a"), sep = "\\s") %>%
+  mutate(a = as.numeric(a)) %>% 
+  mutate(net_carb = (carbohydrates_100g-fiber_100g)/100*a) %>%
+  mutate(Keto = case_when(net_carb <=10 ~ "Yes")) %>%
+  filter(!is.na(a))
+
+#only products using 'ml' units in their serving size.
+us_keto_ml <- us_keto %>%
+  filter(str_detect(serving_size, "\\d\\sml")) %>%
+  mutate(serv_size = serving_size)%>%
+  mutate(serving_size = iconv(.$serving_size,"WINDOWS-1252","UTF-8"))%>%
+  separate(serving_size, into = "a", sep = "\\s") %>%
+  mutate(a = as.numeric(a)) %>% 
+  mutate(net_carb = (carbohydrates_100g-fiber_100g)/100*a) %>%
+  mutate(Keto = case_when(net_carb <=10 ~ "Yes")) %>%
+  filter(!is.na(a))
+```
+
+```{r}
+# Word Clouds for Keto-friendly Product sold in the US supermarket
+us_keto_text <- rbind(us_keto_g[us_keto_g$Keto =="Yes", "product_name"], us_keto_ml[us_keto_ml$Keto =="Yes", "product_name"])
+us_docs <- Corpus(VectorSource(us_keto_text))
+us_docs <- us_docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+us_docs <- tm_map(us_docs, content_transformer(tolower))
+us_docs <- tm_map(us_docs, removeWords, stopwords("english"))
+us_dtm <- TermDocumentMatrix(us_docs) 
+us_matrix <- as.matrix(us_dtm) 
+us_words <- sort(rowSums(us_matrix),decreasing=TRUE) 
+us_df_words <- data.frame(word = names(us_words), freq=us_words)
+us_df_words_keto <- us_df_words[1:4000,]
+
+# Word Clouds for all Product sold in the US supermarket
+us_text <- rbind(us_keto_g[,'product_name'], us_keto_ml[, "product_name"])
+us_docs <- Corpus(VectorSource(us_text))
+us_docs <- us_docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+us_docs <- tm_map(us_docs, content_transformer(tolower))
+us_docs <- tm_map(us_docs, removeWords, stopwords("english"))
+us_dtm <- TermDocumentMatrix(us_docs) 
+us_matrix <- as.matrix(us_dtm) 
+us_words <- sort(rowSums(us_matrix),decreasing=TRUE) 
+us_df_words <- data.frame(word = names(us_words), freq=us_words)
+us_df_words <- us_df_words[1:6806,] #removed words with low frequency
+
+us_df_words_keto$word[1:10] #top 6 words of Keto-friendly products in the US supermarket
+us_df_words$word[1:10] #top 6 words of ordinary products in the US supermarket
+
+set.seed(5702)
+w1<-wordcloud2(data = us_df_words_keto, color='random-light', backgroundColor="green")
+#htmlwidgets::saveWidget(w1,"data\\1.html",selfcontained = F)
+w2<-wordcloud2(data = us_df_words,color='random-light', backgroundColor="black")
+#htmlwidgets::saveWidget(w2,"data\\2.html",selfcontained = F)
+```
+```{r}
+webshot::webshot("data\\1.html",'1.png',vwidth=700,vheight=500,delay=5)
+webshot::webshot("data\\2.html",'2.png',vwidth=700,vheight=500,delay=5)
+```
+
+
+```{r}
+# Word Clouds for Keto-friendly and all Product sold in France supermarket
+fr_keto <- data_keto[data_keto$countries_en %in% "France",]
+
+#only products using 'gram' units in their serving size.
+fr_keto_g <- fr_keto %>%
+  filter(str_detect(serving_size, "\\d\\sg")) %>%
+  mutate(serv_size = serving_size)%>% 
+  mutate(serving_size = iconv(.$serving_size,"WINDOWS-1252","UTF-8"))%>%
+  separate(serving_size, into = "a", sep = "\\s") %>%
+  mutate(a = as.numeric(a)) %>% 
+  mutate(net_carb = (carbohydrates_100g-fiber_100g)/100*a) %>%
+  mutate(Keto = case_when(net_carb <=10 ~ "Yes")) %>%
+  filter(!is.na(a))
+
+#only products using 'ml' units in their serving size.
+fr_keto_ml <- fr_keto %>%
+  filter(str_detect(serving_size, "\\d\\sml")) %>%
+  mutate(serv_size = serving_size)%>%
+  mutate(serving_size = iconv(.$serving_size,"WINDOWS-1252","UTF-8"))%>%
+  separate(serving_size, into = "a", sep = "\\s") %>%
+  mutate(a = as.numeric(a)) %>% 
+  mutate(net_carb = (carbohydrates_100g-fiber_100g)/100*a) %>%
+  mutate(Keto = case_when(net_carb <=10 ~ "Yes")) %>%
+  filter(!is.na(a)) %>%
+  filter(a>1)
+
+fr_keto_text <- rbind(fr_keto_ml[fr_keto_ml$Keto =="Yes", "product_name"], fr_keto_ml[fr_keto_ml$Keto =="Yes", "product_name"])
+fr_docs <- Corpus(VectorSource(fr_keto_text))
+fr_docs <- fr_docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+fr_docs <- tm_map(fr_docs, content_transformer(tolower))
+fr_docs <- tm_map(fr_docs, removeWords, stopwords("french"))
+fr_dtm <- TermDocumentMatrix(fr_docs) 
+fr_matrix <- as.matrix(fr_dtm) 
+fr_words <- sort(rowSums(fr_matrix),decreasing=TRUE) 
+fr_df_words_keto <- data.frame(word = names(fr_words), freq= fr_words)
+
+fr_text <- rbind(fr_keto_g[,'product_name'], fr_keto_ml[, "product_name"])
+fr_docs <- Corpus(VectorSource(fr_text))
+fr_docs <- fr_docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+fr_docs <- tm_map(fr_docs, content_transformer(tolower))
+fr_docs <- tm_map(fr_docs, removeWords, stopwords("french"))
+fr_dtm <- TermDocumentMatrix(fr_docs) 
+fr_matrix <- as.matrix(fr_dtm) 
+fr_words <- sort(rowSums(fr_matrix),decreasing=TRUE) 
+fr_df_words <- data.frame(word = names(fr_words), freq= fr_words)
+
+fr_df_words_keto$word[1:10] #top 10 words of Keto-friendly products in the French supermarket
+fr_df_words$word[1:10] #top 10 words of ordinary products in the French supermarket
+
+set.seed(5702)
+w3<-wordcloud2(data = fr_df_words_keto, color='random-light', backgroundColor="green")
+#htmlwidgets::saveWidget(w3,"data\\3.html",selfcontained = F)
+w4<-wordcloud2(data = fr_df_words, color='random-light', backgroundColor="black")
+#htmlwidgets::saveWidget(w34,"data\\4.html",selfcontained = F)
+```
+
+```{r}
+webshot::webshot("data\\3.html",'3.png',vwidth=700,vheight=500,delay=5)
+webshot::webshot("data\\4.html",'4.png',vwidth=700,vheight=500,delay=5)
+```
